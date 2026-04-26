@@ -2,6 +2,7 @@
 by [@zaynedoc](https://github.com/zaynedoc)
 
 ## Setup
+Assuming you already have MySQL Workbench setup:<br />
 
 1. MySQL Community Downloads > Connector/J<br />
 Download: https://dev.mysql.com/downloads/<br /><br />
