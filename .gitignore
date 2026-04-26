@@ -1,0 +1,10 @@
+/.vscode/
+/bin/
+/out/
+/.classpath
+/.project
+/.settings/
+
+*.class
+
+/lib/*.jar
