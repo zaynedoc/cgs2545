@@ -3,11 +3,13 @@ import java.sql.CallableStatement;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.math.BigDecimal;
 
 public final class DatabaseManager {
     // each Java action calls a matching stored procedure in MySQL
     private static final String REGISTER_NEW_USER_SQL = "{CALL registerNewUser(?, ?)}";
     private static final String LOGIN_WITH_CREDS_SQL = "{CALL loginWithCreds(?, ?)}";
+    private static final String SUBMIT_NEW_PRODUCT_SQL = "{CALL submitNewProduct(?, ?)}";
     private static final String JDBC_URL =
             "jdbc:mysql://127.0.0.1:3306/project4?allowPublicKeyRetrieval=true&useSSL=false&serverTimezone=UTC";
     private static final String USERNAME = "zaynedoc";
@@ -67,6 +69,17 @@ public final class DatabaseManager {
                         resultSet.getInt("userRole")
                 );
             }
+        }
+    }
+
+    public static void submitNewProduct(String productName, BigDecimal productPrice) throws SQLException {
+        try (
+                Connection connection = openConnection();
+                CallableStatement statement = connection.prepareCall(SUBMIT_NEW_PRODUCT_SQL)
+        ) {
+            statement.setString(1, productName);
+            statement.setBigDecimal(2, productPrice);
+            statement.execute();
         }
     }
 }

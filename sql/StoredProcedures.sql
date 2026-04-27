@@ -2,6 +2,7 @@ use project4;
 
 drop procedure if exists registerNewUser;
 drop procedure if exists loginWithCreds;
+drop procedure if exists submitNewProduct;
 
 delimiter $$
 
@@ -23,6 +24,15 @@ begin
     from users
     where username = loginUsername
     and pass = loginPassword;
+end$$
+
+create procedure submitNewProduct(
+    in productName varchar(255),
+    in productPrice decimal(10,2)
+)
+begin
+    insert into product (prodName, price)
+    values (productName, productPrice);
 end$$
 
 delimiter ;
