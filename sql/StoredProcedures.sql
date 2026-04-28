@@ -3,10 +3,12 @@ use project4;
 drop procedure if exists registerNewUser;
 drop procedure if exists loginWithCreds;
 drop procedure if exists submitNewProduct;
+drop procedure if exists getAllProducts;
+drop procedure if exists editExistingProduct;
 
 delimiter $$
 
--- Creates a new customer account
+-- New customer account
 create procedure registerNewUser(
     in newUsername varchar(255),
     in newPassword varchar(255)
@@ -16,7 +18,7 @@ begin
     values (newUsername, newPassword, 2);
 end$$
 
--- Looks up a user by username and password
+-- Look up user by username & password
 create procedure loginWithCreds(
     in loginUsername varchar(255),
     in loginPassword varchar(255)
@@ -28,7 +30,7 @@ begin
     and pass = loginPassword;
 end$$
 
--- Adds a product for the admin flow
+-- Append product to table
 create procedure submitNewProduct(
     in productName varchar(255),
     in productPrice decimal(10,2)
@@ -38,7 +40,7 @@ begin
     values (productName, productPrice);
 end$$
 
--- Returns the shared product list for both roles
+-- Returns shared product list for both roles
 create procedure getAllProducts()
 begin
     select id, prodName, price
@@ -46,4 +48,20 @@ begin
     order by id;
 end$$
 
-delimiter ;
+-- Updates an existing product in table
+create procedure editExistingProduct(
+    in productId integer,
+    in productName varchar(255),
+    in productPrice decimal(10,2),
+    out rowsUpdated integer
+)
+begin
+    update product
+    set prodName = productName,
+        price = productPrice
+    where id = productId;
+
+    set rowsUpdated = row_count();
+end$$
+
+DELIMITER ;

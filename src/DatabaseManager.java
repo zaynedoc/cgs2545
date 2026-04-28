@@ -1,31 +1,43 @@
-import java.sql.Connection;
-import java.sql.CallableStatement;
-import java.sql.DriverManager;
-import java.sql.ResultSet;
-import java.sql.SQLException;
+import java.sql.*;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Handles JDBC calls for the inventory app
+ */
 public final class DatabaseManager {
-    // each Java action calls a matching stored procedure in MySQL
     private static final String REGISTER_NEW_USER_SQL = "{CALL registerNewUser(?, ?)}";
     private static final String LOGIN_WITH_CREDS_SQL = "{CALL loginWithCreds(?, ?)}";
     private static final String SUBMIT_NEW_PRODUCT_SQL = "{CALL submitNewProduct(?, ?)}";
     private static final String GET_ALL_PRODUCTS_SQL = "{CALL getAllProducts()}";
+    private static final String EDIT_EXISTING_PRODUCT_SQL = "{CALL editExistingProduct(?, ?, ?, ?)}";
     private static final String JDBC_URL =
             "jdbc:mysql://127.0.0.1:3306/project4?allowPublicKeyRetrieval=true&useSSL=false&serverTimezone=UTC";
-    private static final String USERNAME = "zaynedoc";
-    private static final String PASSWORD = "zaynedoc123!"; // not my actual password for anything on the internet..
+    private static final String USERNAME = "guest";
+    private static final String PASSWORD = "guest";
 
+    /**
+     * Prevents utility class instantiation
+     */
     private DatabaseManager() {
     }
 
-    // open a new connection for the current database action
+    /**
+     * Opens a database connection for the current action
+     *
+     * @return open JDBC connection to project4
+     * @throws SQLException when the connection cannot be created
+     */
     public static Connection openConnection() throws SQLException {
         return DriverManager.getConnection(JDBC_URL, USERNAME, PASSWORD);
     }
 
+    /**
+     * Tests whether the database can be reached
+     *
+     * @return true when the connection succeeds
+     */
     public static boolean testConnection() {
         try (Connection connection = openConnection()) {
             return connection != null && !connection.isClosed();
@@ -36,6 +48,13 @@ public final class DatabaseManager {
         }
     }
 
+    /**
+     * Registers a new customer account
+     *
+     * @param username username to store in the users table
+     * @param password password to store in the users table
+     * @throws SQLException when the procedure call fails
+     */
     public static void registerNewUser(String username, String password) throws SQLException {
         try (
                 Connection connection = openConnection();
@@ -47,6 +66,14 @@ public final class DatabaseManager {
         }
     }
 
+    /**
+     * Attempts to log in a user with stored credentials
+     *
+     * @param username username entered by the user
+     * @param password password entered by the user
+     * @return logged-in session data or null when no match is found
+     * @throws SQLException when the procedure call fails
+     */
     public static SessionContext loginWithCreds(String username, String password) throws SQLException {
         try (
                 Connection connection = openConnection();
@@ -60,7 +87,6 @@ public final class DatabaseManager {
                 return null;
             }
 
-            // a matching login returns exactly one user row from the action
             try (ResultSet resultSet = statement.getResultSet()) {
                 if (!resultSet.next()) {
                     return null;
@@ -75,6 +101,13 @@ public final class DatabaseManager {
         }
     }
 
+    /**
+     * Inserts a new product row
+     *
+     * @param productName product name entered by the admin
+     * @param productPrice product price entered by the admin
+     * @throws SQLException when the procedure call fails
+     */
     public static void submitNewProduct(String productName, BigDecimal productPrice) throws SQLException {
         try (
                 Connection connection = openConnection();
@@ -86,7 +119,36 @@ public final class DatabaseManager {
         }
     }
 
-    // load every product row for the shared product list screen
+    /**
+     * Updates an existing product row
+     *
+     * @param productId id of the product to update
+     * @param productName new product name
+     * @param productPrice new product price
+     * @return true when a product row was updated
+     * @throws SQLException when the procedure call fails
+     */
+    public static boolean editExistingProduct(int productId, String productName, BigDecimal productPrice)
+            throws SQLException {
+        try (
+                Connection connection = openConnection();
+                CallableStatement statement = connection.prepareCall(EDIT_EXISTING_PRODUCT_SQL)
+        ) {
+            statement.setInt(1, productId);
+            statement.setString(2, productName);
+            statement.setBigDecimal(3, productPrice);
+            statement.registerOutParameter(4, Types.INTEGER);
+            statement.execute();
+            return statement.getInt(4) > 0;
+        }
+    }
+
+    /**
+     * Loads every product for the shared product list view
+     *
+     * @return all product rows returned by the procedure
+     * @throws SQLException when the procedure call fails
+     */
     public static List<ProductRecord> getAllProducts() throws SQLException {
         List<ProductRecord> products = new ArrayList<>();
 
