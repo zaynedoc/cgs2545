@@ -1,5 +1,5 @@
 # Terminal-based Inventory App
-#### Author: [@zaynedoc](https://github.com/zaynedoc/project4)
+#### Author: [@zaynedoc](https://github.com/zaynedoc/cgs2545)
 
 ## Setup
 Assuming you already have MySQL Workbench setup:<br />

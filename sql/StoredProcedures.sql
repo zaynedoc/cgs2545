@@ -5,6 +5,10 @@ drop procedure if exists loginWithCreds;
 drop procedure if exists submitNewProduct;
 drop procedure if exists getAllProducts;
 drop procedure if exists editExistingProduct;
+drop procedure if exists getSalesTotal;
+drop procedure if exists submitOrder;
+drop procedure if exists viewCustomerOrders;
+drop procedure if exists cancelOrder;
 
 delimiter $$
 
@@ -62,6 +66,67 @@ begin
     where id = productId;
 
     set rowsUpdated = row_count();
+end$$
+
+-- Returns current sum of all order totals
+create procedure getSalesTotal()
+begin
+    select coalesce(sum(total), 0.00) as salesTotal
+    from sale;
+end$$
+
+-- Inserts a sale row for a customer order
+create procedure submitOrder(
+    in productId integer,
+    in customerId integer,
+    in orderQuantity integer,
+    out rowsInserted integer,
+    out orderTotal decimal(10,2)
+)
+begin
+    declare productPrice decimal(10,2);
+
+    set rowsInserted = 0;
+    set orderTotal = null;
+
+    select price into productPrice
+    from product
+    where id = productId;
+
+    if productPrice is not null then
+        set orderTotal = productPrice * orderQuantity;
+
+        insert into sale (prodID, userID, qty, total)
+        values (productId, customerId, orderQuantity, orderTotal);
+
+        set rowsInserted = row_count();
+    end if;
+end$$
+
+-- Returns all orders for one customer
+create procedure viewCustomerOrders(
+    in customerId integer
+)
+begin
+    select sale.saleID, product.prodName, sale.qty, sale.total
+    from sale
+    join product on product.id = sale.prodID
+    where sale.userID = customerId
+    order by sale.saleID;
+end$$
+
+-- Deletes one order that belongs to the current customer
+create procedure cancelOrder(
+    in orderSaleId integer,
+    in customerId integer,
+    out rowsDeleted integer
+)
+begin
+    delete from sale
+    where saleID = orderSaleId
+    and userID = customerId;
+
+    set rowsDeleted = row_count();
 end$$
 
 DELIMITER ;

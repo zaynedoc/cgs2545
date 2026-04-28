@@ -12,8 +12,11 @@ public final class DatabaseManager {
     private static final String SUBMIT_NEW_PRODUCT_SQL = "{CALL submitNewProduct(?, ?)}";
     private static final String GET_ALL_PRODUCTS_SQL = "{CALL getAllProducts()}";
     private static final String EDIT_EXISTING_PRODUCT_SQL = "{CALL editExistingProduct(?, ?, ?, ?)}";
-    private static final String JDBC_URL =
-            "jdbc:mysql://127.0.0.1:3306/project4?allowPublicKeyRetrieval=true&useSSL=false&serverTimezone=UTC";
+    private static final String GET_SALES_TOTAL_SQL = "{CALL getSalesTotal()}";
+    private static final String SUBMIT_ORDER_SQL = "{CALL submitOrder(?, ?, ?, ?, ?)}";
+    private static final String VIEW_CUSTOMER_ORDERS_SQL = "{CALL viewCustomerOrders(?)}";
+    private static final String CANCEL_ORDER_SQL = "{CALL cancelOrder(?, ?, ?)}";
+    private static final String JDBC_URL = "jdbc:mysql://127.0.0.1:3306/project4?allowPublicKeyRetrieval=true&useSSL=false&serverTimezone=UTC";
     private static final String USERNAME = "guest";
     private static final String PASSWORD = "guest";
 
@@ -140,6 +143,119 @@ public final class DatabaseManager {
             statement.registerOutParameter(4, Types.INTEGER);
             statement.execute();
             return statement.getInt(4) > 0;
+        }
+    }
+
+    /**
+     * Loads the current sum of all sale totals
+     *
+     * @return total sales amount across every sale row
+     * @throws SQLException when the procedure call fails
+     */
+    public static BigDecimal getSalesTotal() throws SQLException {
+        try (
+                Connection connection = openConnection();
+                CallableStatement statement = connection.prepareCall(GET_SALES_TOTAL_SQL)
+        ) {
+            boolean hasResults = statement.execute();
+            if (!hasResults) {
+                return new BigDecimal("0.00");
+            }
+
+            try (ResultSet resultSet = statement.getResultSet()) {
+                if (!resultSet.next()) {
+                    return new BigDecimal("0.00");
+                }
+
+                BigDecimal salesTotal = resultSet.getBigDecimal("salesTotal");
+                return salesTotal == null ? new BigDecimal("0.00") : salesTotal;
+            }
+        }
+    }
+
+    /**
+     * Inserts a new sale row for the current customer
+     *
+     * @param productId product id selected by the customer
+     * @param userId id of the logged in customer
+     * @param quantity quantity entered for the order
+     * @return order total when the insert succeeds or null when no product is found
+     * @throws SQLException when the procedure call fails
+     */
+    public static BigDecimal submitOrder(int productId, int userId, int quantity) throws SQLException {
+        try (
+                Connection connection = openConnection();
+                CallableStatement statement = connection.prepareCall(SUBMIT_ORDER_SQL)
+        ) {
+            statement.setInt(1, productId);
+            statement.setInt(2, userId);
+            statement.setInt(3, quantity);
+            statement.registerOutParameter(4, Types.INTEGER);
+            statement.registerOutParameter(5, Types.DECIMAL);
+            statement.execute();
+
+            if (statement.getInt(4) <= 0) {
+                return null;
+            }
+
+            return statement.getBigDecimal(5);
+        }
+    }
+
+    /**
+     * Loads every order row for the current customer
+     *
+     * @param userId id of the logged in customer
+     * @return all order rows returned for that customer
+     * @throws SQLException when the procedure call fails
+     */
+    public static List<CustomerOrderRecord> viewCustomerOrders(int userId) throws SQLException {
+        List<CustomerOrderRecord> orders = new ArrayList<>();
+
+        try (
+                Connection connection = openConnection();
+                CallableStatement statement = connection.prepareCall(VIEW_CUSTOMER_ORDERS_SQL)
+        ) {
+            statement.setInt(1, userId);
+
+            boolean hasResults = statement.execute();
+            if (!hasResults) {
+                return orders;
+            }
+
+            try (ResultSet resultSet = statement.getResultSet()) {
+                while (resultSet.next()) {
+                    orders.add(new CustomerOrderRecord(
+                            resultSet.getInt("saleID"),
+                            resultSet.getString("prodName"),
+                            resultSet.getInt("qty"),
+                            resultSet.getBigDecimal("total")
+                    ));
+                }
+            }
+        }
+
+        return orders;
+    }
+
+    /**
+     * Deletes one order row owned by the current customer
+     *
+     * @param saleId sale id selected for cancellation
+     * @param userId id of the logged in customer
+     * @return true when an order row was deleted
+     * @throws SQLException when the procedure call fails
+     */
+    public static boolean cancelOrder(int saleId, int userId) throws SQLException {
+        try (
+                Connection connection = openConnection();
+                CallableStatement statement = connection.prepareCall(CANCEL_ORDER_SQL)
+        ) {
+            statement.setInt(1, saleId);
+            statement.setInt(2, userId);
+            statement.registerOutParameter(3, Types.INTEGER);
+            statement.execute();
+            return statement.getInt(3) > 0;
         }
     }
 

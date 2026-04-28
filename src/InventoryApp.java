@@ -9,7 +9,7 @@ by Zayne Dockery
 
 Terminal-based inventory app using MySQL Schema w/ JDBC
 
-GitHub Repo: https://github.com/zaynedoc/project4
+GitHub Repo: https://github.com/zaynedoc/cgs2545
 */
 
 /**
@@ -22,7 +22,7 @@ public class InventoryApp {
     /**
      * Typical main method for terminal app
      *
-     * @param args unused command line args
+     * @param args command line args
      */
     public static void main(String[] args) {
         System.out.println("Attempting connection to project4...");
@@ -143,11 +143,11 @@ public class InventoryApp {
                 case "2":
                     handleEditExistingProduct();
                     break;
-                case "4":
-                    System.out.println("Placeholder for future implementation.");
-                    break;
                 case "3":
                     handleGetAllProducts();
+                    break;
+                case "4":
+                    handleGetSalesTotal();
                     break;
                 case "5":
                     currentSession = null;
@@ -180,9 +180,13 @@ public class InventoryApp {
 
             switch (choice) {
                 case "1":
+                    handleSubmitOrder();
+                    break;
                 case "2":
+                    handleCancelOrder();
+                    break;
                 case "3":
-                    System.out.println("Placeholder for future implementation.");
+                    handleViewCustomerOrders();
                     break;
                 case "4":
                     handleGetAllProducts();
@@ -254,6 +258,85 @@ public class InventoryApp {
             }
         } catch (SQLException exception) {
             System.out.println("Unable to load products.");
+            System.out.println(exception.getMessage());
+        }
+    }
+
+    /**
+     * Loads and prints the current total sales amount
+     */
+    private static void handleGetSalesTotal() {
+        try {
+            BigDecimal salesTotal = DatabaseManager.getSalesTotal();
+            System.out.println("Current sales total: " + salesTotal);
+        } catch (SQLException exception) {
+            System.out.println("Unable to load sales total.");
+            System.out.println(exception.getMessage());
+        }
+    }
+
+    /**
+     * Prompts for order data and inserts a customer order
+     */
+    private static void handleSubmitOrder() {
+        int productId = promptForPositiveInt("What product ID do you want to order?");
+        int quantity = promptForPositiveInt("What quantity do you want to order?");
+
+        try {
+            BigDecimal orderTotal = DatabaseManager.submitOrder(productId, currentSession.getUserId(), quantity);
+
+            if (orderTotal == null) {
+                System.out.println("No product with that ID was found.");
+                return;
+            }
+
+            System.out.println("Order submitted successfully.");
+            System.out.println("Order total: " + orderTotal);
+        } catch (SQLException exception) {
+            System.out.println("Unable to submit the order.");
+            System.out.println(exception.getMessage());
+        }
+    }
+
+    /**
+     * Loads and prints every order for the current customer
+     */
+    private static void handleViewCustomerOrders() {
+        try {
+            List<CustomerOrderRecord> orders = DatabaseManager.viewCustomerOrders(currentSession.getUserId());
+
+            System.out.println("Now displaying your orders.");
+            if (orders.isEmpty()) {
+                System.out.println("No orders found.");
+                return;
+            }
+
+            for (CustomerOrderRecord order : orders) {
+                System.out.println(order.saleId() + " " + order.productName() + " "
+                        + order.quantity() + " " + order.total());
+            }
+        } catch (SQLException exception) {
+            System.out.println("Unable to load your orders.");
+            System.out.println(exception.getMessage());
+        }
+    }
+
+    /**
+     * Prompts for one sale id and cancels that order when owned by the customer
+     */
+    private static void handleCancelOrder() {
+        int saleId = promptForPositiveInt("What sale ID do you want to cancel?");
+
+        try {
+            boolean wasCanceled = DatabaseManager.cancelOrder(saleId, currentSession.getUserId());
+
+            if (wasCanceled) {
+                System.out.println("Order canceled successfully.");
+            } else {
+                System.out.println("No order with that sale ID was found.");
+            }
+        } catch (SQLException exception) {
+            System.out.println("Unable to cancel the order.");
             System.out.println(exception.getMessage());
         }
     }
